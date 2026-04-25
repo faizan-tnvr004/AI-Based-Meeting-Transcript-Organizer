@@ -585,3 +585,37 @@ The committee decided to approve the new proposal."></textarea>
       btn.innerHTML = '🔍 Classify Sentence';
     }
   }
+      
+    		
+ 
+
+  // ========================================
+  // SHOW ERROR MESSAGE
+  // ========================================
+  function showError(id, msg) {
+    const el = document.getElementById(id);
+    el.innerHTML = msg;
+    el.style.display = 'block';
+  }
+
+  // ========================================
+  // ESCAPE HTML (Prevent XSS)
+  // ========================================
+  function escHtml(t) {
+    return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ========================================
+  // KEYBOARD SHORTCUT (Ctrl+Enter to submit)
+  // ========================================
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      const active = document.querySelector('.panel.active').id;
+      if (active === 'panel-single') classifySingle();
+      else classifyBatch();
+    }
+  });
+</script>
+
+</body>
+</html>
