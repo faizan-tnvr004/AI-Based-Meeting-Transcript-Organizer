@@ -386,3 +386,55 @@
   <button class="tab-btn active" onclick="showTab('single')">Single Sentence</button>
   <button class="tab-btn" onclick="showTab('batch')">Batch (Multiple)</button>
 </div>
+
+<!-- ========================================
+     SINGLE SENTENCE PANEL
+     ======================================== -->
+<div id="panel-single" class="panel active">
+  <div class="card">
+    <h2>Enter a Meeting Sentence</h2>
+
+    <!-- Example Buttons -->
+    <div class="example-btns">
+      <span style="font-size:0.8rem;color:#64748b;margin-right:4px;">Try:</span>
+      <button class="ex-btn" onclick="setExample('We have decided to adopt Python as the primary backend language.')">Decision</button>
+      <button class="ex-btn" onclick="setExample('John will send the revised budget to the finance team by Friday.')">Action Item</button>
+      <button class="ex-btn" onclick="setExample('I think we should consider the trade-offs between both approaches here.')">Discussion</button>
+    </div>
+
+    <!-- Input Textarea -->
+    <textarea id="single-input" rows="4" placeholder="e.g. We agreed to move the deadline to next Friday..."></textarea>
+    <br>
+    
+    <!-- Classify Button -->
+    <button class="btn" id="single-btn" onclick="classifySingle()">🔍 Classify Sentence</button>
+
+    <!-- Error Message (Hidden by default) -->
+    <div class="error-msg" id="single-error"></div>
+
+    <!-- Result Box (Hidden by default) -->
+    <div class="result-box" id="single-result">
+      <div class="result-label" id="res-label">–</div>
+      <div class="result-conf" id="res-conf">–</div>
+      
+      <!-- Probability Bars -->
+      <div class="prob-bars">
+        <div class="prob-row">
+          <span class="prob-name">Action Item</span>
+          <div class="prob-track"><div class="prob-fill fill-action" id="bar-action" style="width:0%"></div></div>
+          <span class="prob-pct" id="pct-action">0%</span>
+        </div>
+        <div class="prob-row">
+          <span class="prob-name">Decision</span>
+          <div class="prob-track"><div class="prob-fill fill-decision" id="bar-decision" style="width:0%"></div></div>
+          <span class="prob-pct" id="pct-decision">0%</span>
+        </div>
+        <div class="prob-row">
+          <span class="prob-name">Discussion</span>
+          <div class="prob-track"><div class="prob-fill fill-discussion" id="bar-discussion" style="width:0%"></div></div>
+          <span class="prob-pct" id="pct-discussion">0%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
