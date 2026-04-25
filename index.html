@@ -438,3 +438,150 @@
     </div>
   </div>
 </div>
+<!-- ========================================
+     BATCH PREDICTION PANEL
+     ======================================== -->
+<div id="panel-batch" class="panel">
+  <div class="card">
+    <h2>Enter Multiple Sentences (one per line)</h2>
+    
+    <!-- Batch Input Textarea -->
+    <textarea id="batch-input" rows="8"
+      placeholder="We agreed to move the deadline to next Friday.
+John will send the budget report to the team.
+I think we should discuss the pros and cons further.
+The committee decided to approve the new proposal."></textarea>
+    <br>
+    
+    <!-- Classify Button -->
+    <button class="btn" id="batch-btn" onclick="classifyBatch()">🔍 Classify All</button>
+    
+    <!-- Error Message (Hidden by default) -->
+    <div class="error-msg" id="batch-error"></div>
+    
+    <!-- Results Container (Populated dynamically) -->
+    <div class="batch-results" id="batch-results"></div>
+  </div>
+</div>
+
+<!-- ========================================
+     STATUS BAR (Footer)
+     ======================================== -->
+<div class="status-bar">
+  <span class="status-dot"></span>Connected to Flask API at <code>localhost:5000</code>
+</div>
+
+<!-- ========================================
+     JAVASCRIPT CODE
+     ======================================== -->
+<script>
+  // ========================================
+  // CONFIGURATION
+  // ========================================
+  const API = 'http://localhost:5000';
+
+  // ========================================
+  // TAB SWITCHING FUNCTION
+  // ========================================
+  function showTab(name) {
+    // Update active tab button
+    document.querySelectorAll('.tab-btn').forEach((b, i) => {
+      b.classList.toggle('active', ['single','batch'][i] === name);
+    });
+    
+    // Show corresponding panel
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + name).classList.add('active');
+  }
+
+  // ========================================
+  // LOAD EXAMPLE SENTENCE
+  // ========================================
+  function setExample(text) {
+    document.getElementById('single-input').value = text;
+    document.getElementById('single-result').style.display = 'none';
+    document.getElementById('single-error').style.display = 'none';
+  }
+
+  // ========================================
+  // HELPER: Get CSS class for label
+  // ========================================
+  function labelClass(label) {
+    if (label === 'Decision')   return 'decision';
+    if (label === 'Action Item') return 'action';
+    return 'discussion';
+  }
+
+  // ========================================
+  // HELPER: Get badge class for label
+  // ========================================
+  function badgeClass(label) {
+    if (label === 'Decision')   return 'badge-decision';
+    if (label === 'Action Item') return 'badge-action';
+    return 'badge-discussion';
+  }
+
+  // ========================================
+  // SINGLE SENTENCE CLASSIFICATION
+  // ========================================
+  async function classifySingle() {
+    const text = document.getElementById('single-input').value.trim();
+    const btn  = document.getElementById('single-btn');
+    const errBox = document.getElementById('single-error');
+    const resBox = document.getElementById('single-result');
+
+    // Hide previous results/errors
+    errBox.style.display = 'none';
+    resBox.style.display = 'none';
+
+    // Validate input
+    if (!text) { 
+      showError('single-error', 'Please enter a sentence.'); 
+      return; 
+    }
+
+    // Show loading state
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Classifying...';
+
+    try {
+      // Call Flask API
+      const res = await fetch(`${API}/predict`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+
+      const data = await res.json();
+      
+      // Handle API errors
+      if (!res.ok) { 
+        showError('single-error', data.error || 'API error'); 
+        return; 
+      }
+
+      // Update result box styling based on prediction
+      resBox.className = 'result-box ' + labelClass(data.label);
+      document.getElementById('res-label').textContent = data.label;
+      document.getElementById('res-conf').textContent =
+        `Confidence: ${data.confidence.toFixed(1)}%`;
+
+      // Update probability bars
+      const probs = data.probabilities;
+      setBar('action',     probs['Action Item'] ?? 0);
+      setBar('decision',   probs['Decision']    ?? 0);
+      setBar('discussion', probs['Discussion']  ?? 0);
+
+      // Show result box
+      resBox.style.display = 'block';
+      
+    } catch (e) {
+      // Handle connection errors
+      showError('single-error',
+        '❌ Cannot connect to Flask API. Make sure <code>python app.py</code> is running on port 5000.');
+    } finally {
+      // Reset button state
+      btn.disabled = false;
+      btn.innerHTML = '🔍 Classify Sentence';
+    }
+  }
