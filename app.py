@@ -111,3 +111,46 @@ if __name__ == '__main__':
     print("   → Batch prediction:   POST http://localhost:5000/predict-batch")
     print("   → Open frontend:      index.html in your browser\n")
     app.run(debug=True, port=5000)
+
+    @app.route('/predict-batch', methods=['POST'])
+def predict_batch():
+    """
+    POST /predict-batch
+    Body: { "sentences": ["sentence 1", "sentence 2", ...] }
+    Returns list of predictions.
+    """
+    data = request.get_json()
+    if not data or 'sentences' not in data:
+        return jsonify({"error": "Please send JSON with a 'sentences' list"}), 400
+
+    sentences = data['sentences']
+    if not isinstance(sentences, list) or len(sentences) == 0:
+        return jsonify({"error": "'sentences' must be a non-empty list"}), 400
+
+    results = []
+    for sentence in sentences:
+        sentence = sentence.strip()
+        if not sentence:
+            results.append({"error": "empty sentence"})
+            continue
+        cleaned = clean(sentence)
+        if not cleaned:
+            results.append({"sentence": sentence, "error": "too short after cleaning"})
+            continue
+        vec = vectorizer.transform([cleaned]).toarray()
+        probs = model.predict(vec, verbose=0)[0]
+        pred_idx = int(np.argmax(probs))
+        pred_label = label_encoder.classes_[pred_idx]
+        confidence = float(probs[pred_idx]) * 100
+        prob_dict = {
+            cls: round(float(p) * 100, 2)
+            for cls, p in zip(label_encoder.classes_, probs)
+        }
+        results.append({
+            "sentence": sentence,
+            "label": pred_label,
+            "confidence": round(confidence, 2),
+            "probabilities": prob_dict
+        })
+
+    return jsonify({"results": results, "total": len(results)})
