@@ -11,14 +11,14 @@ import re
 import nltk
 
 # Download NLTK data (only needed once)
-nltk.download('punkt', quiet=True)
+nltk.download('punkt')
 nltk.download('punkt_tab', quiet=True)
 nltk.download('stopwords', quiet=True)
 nltk.download('wordnet', quiet=True)
 
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
-from nltk.tokenize import word_tokenize
+from nltk.tokenize import sent_tokenize, word_tokenize
 
 # ─── Load TensorFlow lazily to avoid slow import at top ───
 import tensorflow as tf
@@ -30,7 +30,7 @@ CORS(app)  # Allow frontend to call this API
 print("Loading model and assets...")
 model = tf.keras.models.load_model('meeting_classifier_model.keras')
 
-with open('vectorizer.pkl', 'rb') as f:
+with open('tfidf_vectorizer.pkl', 'rb') as f:
     vectorizer = pickle.load(f)
 
 with open('label_encoder.pkl', 'rb') as f:
@@ -105,40 +105,69 @@ def predict():
     })
 
 @app.route('/predict-batch', methods=['POST'])
-
+@app.route('/predict-batch', methods=['POST'])
 def predict_batch():
     """
     POST /predict-batch
-    Body: { "sentences": ["sentence 1", "sentence 2", ...] }
+    Body: { "sentences": ["sentence 1", "sentence 2", ...] } or { "sentences": "paragraph text" }
     Returns list of predictions.
     """
     data = request.get_json()
     if not data or 'sentences' not in data:
         return jsonify({"error": "Please send JSON with a 'sentences' list"}), 400
 
-    sentences = data['sentences']
-    if not isinstance(sentences, list) or len(sentences) == 0:
-        return jsonify({"error": "'sentences' must be a non-empty list"}), 400
-
+    raw_input = data['sentences']
+    
+    # ========================================
+    # SMART SENTENCE HANDLING
+    # ========================================
+    if isinstance(raw_input, str):
+        # If it's a string, split it intelligently
+        sentences = sent_tokenize(raw_input)  # NLTK's sentence tokenizer
+    elif isinstance(raw_input, list):
+        # If it's already a list, check each item
+        sentences = []
+        for item in raw_input:
+            if isinstance(item, str):
+                # Split each item into sentences
+                sentences.extend(sent_tokenize(item))
+            else:
+                sentences.append(str(item))
+    else:
+        return jsonify({"error": "'sentences' must be a string or list"}), 400
+    
+    # Remove empty sentences
+    sentences = [s.strip() for s in sentences if s.strip()]
+    
+    if len(sentences) == 0:
+        return jsonify({"error": "No valid sentences found after splitting"}), 400
+    
+    print(f"📝 Processing {len(sentences)} sentences")
+    
+    # ========================================
+    # CLASSIFY EACH SENTENCE
+    # ========================================
     results = []
     for sentence in sentences:
-        sentence = sentence.strip()
-        if not sentence:
-            results.append({"error": "empty sentence"})
-            continue
         cleaned = clean(sentence)
         if not cleaned:
-            results.append({"sentence": sentence, "error": "too short after cleaning"})
+            results.append({
+                "sentence": sentence, 
+                "error": "too short after cleaning"
+            })
             continue
+            
         vec = vectorizer.transform([cleaned]).toarray()
         probs = model.predict(vec, verbose=0)[0]
         pred_idx = int(np.argmax(probs))
         pred_label = label_encoder.classes_[pred_idx]
         confidence = float(probs[pred_idx]) * 100
+        
         prob_dict = {
             cls: round(float(p) * 100, 2)
             for cls, p in zip(label_encoder.classes_, probs)
         }
+        
         results.append({
             "sentence": sentence,
             "label": pred_label,
@@ -147,6 +176,33 @@ def predict_batch():
         })
 
     return jsonify({"results": results, "total": len(results)})
+from nltk.tokenize import sent_tokenize
+
+def split_into_sentences(text):
+    # If already a list, return as-is
+    if isinstance(text, list):
+        return text
+    
+    # Otherwise split properly using NLP
+    return sent_tokenize(text)
+
+def smart_split(text):
+    # Step 1: NLTK split
+    sentences = sent_tokenize(text)
+
+    # Step 2: force split long sentences further
+    final = []
+
+    for s in sentences:
+        # split on:
+        # - comma + space
+        # - semicolon + space
+        # - "and" (optional improvement)
+        parts = re.split(r',\s+|;\s+', s)
+
+        final.extend(parts)
+
+    return [x.strip() for x in final if x.strip()]
 
 if __name__ == '__main__':
     print("\n Starting Meeting Classifier API...")
