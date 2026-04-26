@@ -66,7 +66,43 @@ def clean(text):
 def home():
     return jsonify({"status": "Meeting Classifier API is running!", "version": "1.0"})
 
+@app.route('/predict', methods=['POST'])
+def predict():
+    """
+    POST /predict
+    Body: { "text": "We decided to use Python for the backend." }
+    Returns: { "label": "Decision", "confidence": 92.3, "probabilities": {...} }
+    """
+    data = request.get_json()
+    if not data or 'text' not in data:
+        return jsonify({"error": "Please send JSON with a 'text' field"}), 400
 
+    text = data['text'].strip()
+    if not text:
+        return jsonify({"error": "Text cannot be empty"}), 400
+
+    # Clean and vectorize
+    cleaned = clean(text)
+    if not cleaned:
+        return jsonify({"error": "Text became empty after cleaning — try a longer sentence"}), 400
+
+    vec = vectorizer.transform([cleaned]).toarray()
+    probs = model.predict(vec, verbose=0)[0]
+    pred_idx = int(np.argmax(probs))
+    pred_label = label_encoder.classes_[pred_idx]
+    confidence = float(probs[pred_idx]) * 100
+
+    prob_dict = {
+        cls: round(float(p) * 100, 2)
+        for cls, p in zip(label_encoder.classes_, probs)
+    }
+
+    return jsonify({
+        "label": pred_label,
+        "confidence": round(confidence, 2),
+        "probabilities": prob_dict,
+        "cleaned_text": cleaned
+    })
 
 
 if __name__ == '__main__':
