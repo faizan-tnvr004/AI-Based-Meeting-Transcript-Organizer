@@ -105,14 +105,7 @@ def predict():
     })
 
 
-if __name__ == '__main__':
-    print("\n Starting Meeting Classifier API...")
-    print("   → Single prediction:  POST http://localhost:5000/predict")
-    print("   → Batch prediction:   POST http://localhost:5000/predict-batch")
-    print("   → Open frontend:      index.html in your browser\n")
-    app.run(debug=True, port=5000)
 
-    @app.route('/predict-batch', methods=['POST'])
 def predict_batch():
     """
     POST /predict-batch
@@ -154,3 +147,12 @@ def predict_batch():
         })
 
     return jsonify({"results": results, "total": len(results)})
+
+if __name__ == '__main__':
+    print("\n Starting Meeting Classifier API...")
+    print("   → Single prediction:  POST http://localhost:5000/predict")
+    print("   → Batch prediction:   POST http://localhost:5000/predict-batch")
+    print("   → Open frontend:      index.html in your browser\n")
+    app.run(debug=True, port=5000)
+
+    @app.route('/predict-batch', methods=['POST'])
