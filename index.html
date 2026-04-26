@@ -585,7 +585,81 @@ The committee decided to approve the new proposal."></textarea>
       btn.innerHTML = '🔍 Classify Sentence';
     }
   }
+      // ========================================
+  // UPDATE PROBABILITY BAR
+  // ========================================
+  function setBar(name, pct) {
+    document.getElementById('bar-' + name).style.width = pct + '%';
+    document.getElementById('pct-' + name).textContent = pct.toFixed(1) + '%';
+  }
+
+  // ========================================
+  // BATCH CLASSIFICATION
+  // ========================================
+  async function classifyBatch() {
+    const raw = document.getElementById('batch-input').value.trim();
+    const btn  = document.getElementById('batch-btn');
+    const errBox = document.getElementById('batch-error');
+    const container = document.getElementById('batch-results');
+
+    // Clear previous results/errors
+    errBox.style.display = 'none';
+    container.innerHTML = '';
+
+    // Validate input
+    if (!raw) { 
+      showError('batch-error', 'Please enter at least one sentence.'); 
+      return; 
+    }
+
+    // Split sentences by newline
+    const sentences = raw.split('\n').map(s => s.trim()).filter(Boolean);
+    if (sentences.length === 0) { 
+      showError('batch-error', 'No valid sentences found.'); 
+      return; 
+    }
+
+    // Show loading state
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Classifying...';
+
+    try {
+      // Call Flask API
+      const res = await fetch(`${API}/predict-batch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sentences })
+      });
+
+      const data = await res.json();
       
+      // Handle API errors
+      if (!res.ok) { 
+        showError('batch-error', data.error || 'API error'); 
+        return; 
+      }
+
+      // Display each result
+      data.results.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'batch-item';
+        div.innerHTML = `
+          <span class="batch-sentence">${escHtml(item.sentence)}</span>
+          <span class="badge ${badgeClass(item.label)}">${item.label} ${item.confidence.toFixed(0)}%</span>
+        `;
+        container.appendChild(div);
+      });
+
+    } catch (e) {
+      // Handle connection errors
+      showError('batch-error',
+        '❌ Cannot connect to Flask API. Make sure <code>python app.py</code> is running on port 5000.');
+    } finally {
+      // Reset button state
+      btn.disabled = false;
+      btn.innerHTML = '🔍 Classify All';
+    }
+  }
     		
  
 
