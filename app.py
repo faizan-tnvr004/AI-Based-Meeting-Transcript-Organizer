@@ -36,7 +36,7 @@ with open('vectorizer.pkl', 'rb') as f:
 with open('label_encoder.pkl', 'rb') as f:
     label_encoder = pickle.load(f)
 
-print("✅ All assets loaded!")
+print(" All assets loaded!")
 
 # ─── Text cleaning (same as notebook) ───
 stop_words = set(stopwords.words('english'))
@@ -104,7 +104,7 @@ def predict():
         "cleaned_text": cleaned
     })
 
-
+@app.route('/predict-batch', methods=['POST'])
 
 def predict_batch():
     """
@@ -155,4 +155,4 @@ if __name__ == '__main__':
     print("   → Open frontend:      index.html in your browser\n")
     app.run(debug=True, port=5000)
 
-    @app.route('/predict-batch', methods=['POST'])
+  
